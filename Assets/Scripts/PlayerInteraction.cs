@@ -5,18 +5,19 @@
 // Date:        31 / July
 // ==========================================
 
-using UnityEngine;
-using UnityEngine.InputSystem;
-using TMPro;
+using UnityEngine; 
+using UnityEngine.InputSystem; 
+using TMPro; 
 
 public class PlayerInteraction : MonoBehaviour
 {
+
     [Header("Raycast Settings")]
     [Tooltip("maximum interaction distance")]
-    [SerializeField] private float interactDistance = 3.0f;
+    [SerializeField] private float interactDistance = 3.0f; // Sets max interaction ray distance.
 
     [Tooltip("Layer of interactable objects")]
-    [SerializeField] private LayerMask interactableLayer;
+    [SerializeField] private LayerMask interactableLayer; // Selects which layers the ray can hit.
 
     [Header("UI References (Canvas)")]
     [Tooltip("Press E to Interact Text")]
@@ -32,10 +33,11 @@ public class PlayerInteraction : MonoBehaviour
     [Tooltip("draw debug rays in the Scene view")]
     [SerializeField] private bool showDebugRay = true;
 
-    private Camera playerCamera;
-    private InteractableObject currentTarget; // interactable object point out now
+    Camera playerCamera; // Caches the camera used for aiming.
 
-    private void Start()
+    InteractableObject currentTarget; // Tracks the interactable currently aimed at
+
+    void Awake()
     {
         playerCamera = Camera.main;
 
@@ -44,14 +46,13 @@ public class PlayerInteraction : MonoBehaviour
             Debug.LogError("[PlayerInteraction] There is no camera tagged 'MainCamera' in the scene!");
         }
 
-        // hide all UI at origin
         if (promptText != null) promptText.gameObject.SetActive(false);
         if (infoPanel != null) infoPanel.SetActive(false);
     }
 
-    private void Update()
+    void Update()
     {
-        // 1. If panel is on press E or esc to close
+        // if panel is open, only listen for close input, skip raycast this frame
         if (infoPanel != null && infoPanel.activeSelf)
         {
             if (Keyboard.current.eKey.wasPressedThisFrame || Keyboard.current.escapeKey.wasPressedThisFrame)
@@ -61,63 +62,86 @@ public class PlayerInteraction : MonoBehaviour
             return;
         }
 
-        // 2. raycasting and renew UI
-        PerformRaycast();
+        UpdateInteractionTarget(); // Refreshes the currently aimed interactable.
 
-        // 3. press E to interact
-        if (currentTarget != null && Keyboard.current.eKey.wasPressedThisFrame)
+        if (currentTarget != null && Keyboard.current.eKey.wasPressedThisFrame) // Checks interact input.
         {
-            currentTarget.OnInteract(this);
+            OnInteract(); // Runs when the interact input is triggered.
         }
     }
 
-    private void PerformRaycast()
+    void UpdateInteractionTarget() // Performs the raycast target check.
     {
-        if (playerCamera == null) return;
+        if (playerCamera == null) // Checks whether camera cache is missing.
+        { 
+            playerCamera = Camera.main; // Tries to re-fetch the main camera.
+            if (playerCamera == null) // Checks if camera is still unavailable.
+            { 
+                ClearCurrentTargets(); // Clears all tracked targets.
+                return;
+            }
+        }
 
-        Vector3 rayOrigin = playerCamera.transform.position;
-        Vector3 rayDirection = playerCamera.transform.forward;
+        Ray ray = new Ray(playerCamera.transform.position, playerCamera.transform.forward); // Builds a forward ray from the camera.
+        Vector3 rayEndPoint = ray.origin + (ray.direction * interactDistance); // Computes the max-distance end point of the ray.
 
         if (showDebugRay)
         {
-            Debug.DrawRay(rayOrigin, rayDirection * interactDistance, Color.red);
+            Debug.DrawRay(ray.origin, ray.direction * interactDistance, Color.red);
         }
 
-        // detect the object by raycast
-        if (Physics.Raycast(rayOrigin, rayDirection, out RaycastHit hit, interactDistance, interactableLayer))
+        if (Physics.Raycast(ray, out RaycastHit hit, interactDistance, interactableLayer)) // Casts the ray against valid colliders.
+        { 
+            Debug.DrawLine(ray.origin, hit.point, Color.green); // Draws the hit ray in green.
+            SetCurrentTargetsFromHit(hit.collider); // Updates targets from the hit collider.
+        }
+        else // Handles the case where nothing was hit.
         {
-            // print object hited in console window
-            Debug.Log("ray hit the object: " + hit.collider.name);
-
-            InteractableObject interactable = hit.collider.GetComponent<InteractableObject>();
-
-            if (interactable != null)
-            {
-                currentTarget = interactable;
-
-                if (promptText != null)
-                {
-                    promptText.text = currentTarget.promptMessage;
-                    promptText.gameObject.SetActive(true);
-                }
-                return;
-            }
-            else
-            {
-                Debug.LogWarning("hit object " + hit.collider.name + "without InteractableObject script on it!");
-            }
-        }
-
-        // if raycast nothing or non-interactable,renew the status and hide hit-on announcement
-        ClearTarget();
+            Debug.DrawLine(ray.origin, rayEndPoint, Color.red); // Draws the full ray in red when no hit occurs.
+            ClearCurrentTargets();
+        } 
     }
 
-    private void ClearTarget()
+    void SetCurrentTargetsFromHit(Collider hitCollider) // Derives interactable reference from a hit.
     {
-        currentTarget = null;
+        InteractableObject newTarget = null; // Prepares a fresh interactable target.
+
+        if (hitCollider.CompareTag("Interactable")) // Checks if the hit object is tagged as Interactable.
+        {
+            newTarget = hitCollider.GetComponentInParent<InteractableObject>(); // Gets InteractableObject script from hit hierarchy.
+        }
+
+        if (newTarget != currentTarget) // Only refresh UI when the target actually changed.
+        {
+            currentTarget = newTarget; // Commits the interactable target.
+
+            if (currentTarget != null && promptText != null)
+            {
+                promptText.text = currentTarget.promptMessage;
+                promptText.gameObject.SetActive(true);
+            }
+            else if (currentTarget == null && promptText != null)
+            {
+                promptText.gameObject.SetActive(false);
+            }
+        }
+    }
+
+    void ClearCurrentTargets() // Resets currently tracked interaction target.
+    {
+        currentTarget = null; // Clears interactable target.
+
         if (promptText != null)
         {
             promptText.gameObject.SetActive(false);
+        }
+    }
+
+    void OnInteract() // Runs when the interact input is triggered.
+    {
+        if (currentTarget != null) // Checks for an interactable target.
+        {
+            currentTarget.OnInteract(this); // Calls the target's own interact logic (shows detail panel).
         }
     }
 
@@ -126,7 +150,7 @@ public class PlayerInteraction : MonoBehaviour
     /// </summary>
     public void ShowDetailPanel(string content)
     {
-        ClearTarget(); // hide hit-on announcemnet
+        ClearCurrentTargets(); // hide hit-on announcement
 
         if (infoPanelText != null)
         {
@@ -149,4 +173,4 @@ public class PlayerInteraction : MonoBehaviour
             infoPanel.SetActive(false);
         }
     }
-}
+} 
