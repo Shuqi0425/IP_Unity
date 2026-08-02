@@ -20,7 +20,7 @@ public class InteractableObject : MonoBehaviour
     /// <summary>
     /// Trigger interact logic
     /// </summary>
-    public void OnInteract(PlayerInteraction player)
+    public virtual void OnInteract(PlayerInteraction player)
     {
         // triggered UI panel and show info
         player.ShowDetailPanel(detailText);

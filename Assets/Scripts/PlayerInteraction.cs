@@ -36,6 +36,7 @@ public class PlayerInteraction : MonoBehaviour
     Camera playerCamera; // Caches the camera used for aiming.
 
     InteractableObject currentTarget; // Tracks the interactable currently aimed at
+    private GameObject lastInteractedNPC; // record which NPC triggered conversation
 
     void Awake()
     {
@@ -148,9 +149,10 @@ public class PlayerInteraction : MonoBehaviour
     /// <summary>
     /// open the detail info panel
     /// </summary>
-    public void ShowDetailPanel(string content)
+    public void ShowDetailPanel(string content, GameObject sourceNPC = null)
     {
         ClearCurrentTargets(); // hide hit-on announcement
+        lastInteractedNPC = sourceNPC;
 
         if (infoPanelText != null)
         {
@@ -171,6 +173,12 @@ public class PlayerInteraction : MonoBehaviour
         if (infoPanel != null)
         {
             infoPanel.SetActive(false);
+        }
+
+        if (lastInteractedNPC != null)
+        {
+            lastInteractedNPC.GetComponent<NPCJaywalking>()?.LeaveAfterDialogue();
+            lastInteractedNPC = null;
         }
     }
 } 
