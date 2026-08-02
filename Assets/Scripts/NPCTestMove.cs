@@ -1,78 +1,59 @@
-// ==========================================
-// Title:       NPCPatrolPath.cs
-// Description: NPC walks back and forth along a set of waypoints (e.g. an L-shaped road).
-// Author:      Sun Shuqi (10274096K)
-// Date:        1 / August
-// ==========================================
-
 using UnityEngine;
 using UnityEngine.AI;
 
 [RequireComponent(typeof(NavMeshAgent))]
-public class NPCPatrolPath : MonoBehaviour
+public class NPCRandomWander : MonoBehaviour
 {
-    [Header("pathway point setings")]
-    [SerializeField] private Transform[] waypoints;
-
-    [Header("arrive threshold")]
-    [SerializeField] private float arriveThreshold = 1.0f;
+    [Header("moving settings")]
+    [SerializeField] private float minWaitTime = 1f;
+    [SerializeField] private float maxWaitTime = 3f;
+    [SerializeField] private float wanderRadius = 15f;
 
     private NavMeshAgent agent;
-    private int currentIndex = 0;
-    private bool movingForward = true;
+    private Vector3 startPosition;
+    private float waitTimer;
+    private bool isWaiting;
+    private int walkableOnlyMask; // only include Walkable, exclude Crosswalk
 
     private void Start()
     {
         agent = GetComponent<NavMeshAgent>();
+        startPosition = transform.position;
 
-        if (waypoints == null || waypoints.Length < 2)
-        {
-            Debug.LogWarning("[NPCPatrolPath] at least 2 waypoints are required!");
-            return;
-        }
+        // Important: The agent is still allowed to walk on all areas (including Crosswalk) while moving, but we exclude Crosswalk when selecting a target point
+        int crosswalkBit = 1 << NavMesh.GetAreaFromName("crossWalk");
+        walkableOnlyMask = NavMesh.AllAreas & ~crosswalkBit;
 
-        agent.stoppingDistance = 0f;
-        GoToCurrentWaypoint();
+        PickNewDestination();
     }
 
     private void Update()
     {
-        if (waypoints == null || waypoints.Length < 2) return;
-
-        float distanceToTarget = Vector3.Distance(transform.position, waypoints[currentIndex].position);
-
-        if (!agent.pathPending && distanceToTarget <= arriveThreshold)
+        if (isWaiting)
         {
-            AdvanceToNextWaypoint();
+            waitTimer -= Time.deltaTime;
+            if (waitTimer <= 0f) PickNewDestination();
+            return;
+        }
+
+        if (!agent.pathPending && agent.remainingDistance <= agent.stoppingDistance + 0.5f)
+        {
+            isWaiting = true;
+            waitTimer = Random.Range(minWaitTime, maxWaitTime);
         }
     }
 
-    private void GoToCurrentWaypoint()
+    private void PickNewDestination()
     {
-        agent.SetDestination(waypoints[currentIndex].position);
-    }
+        Vector3 randomDirection = Random.insideUnitSphere * wanderRadius;
+        randomDirection += startPosition;
 
-    private void AdvanceToNextWaypoint()
-    {
-        if (movingForward)
+        // use NavMesh.SamplePosition to find a valid point on the NavMesh, excluding Crosswalk areas
+        if (NavMesh.SamplePosition(randomDirection, out NavMeshHit hit, wanderRadius, walkableOnlyMask))
         {
-            currentIndex++;
-            if (currentIndex >= waypoints.Length)
-            {
-                currentIndex = waypoints.Length - 2;
-                movingForward = false;
-            }
-        }
-        else
-        {
-            currentIndex--;
-            if (currentIndex < 0)
-            {
-                currentIndex = 1;
-                movingForward = true;
-            }
+            agent.SetDestination(hit.position);
         }
 
-        GoToCurrentWaypoint();
+        isWaiting = false;
     }
 }
