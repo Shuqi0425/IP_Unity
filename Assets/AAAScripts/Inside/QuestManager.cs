@@ -19,8 +19,6 @@ public class QuestManager : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
-
-            // Keep quest progress when changing scenes
             DontDestroyOnLoad(gameObject);
         }
         else
