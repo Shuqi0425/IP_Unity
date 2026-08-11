@@ -1,49 +1,26 @@
 fileFormatVersion: 2
 guid: 4350b309aa35d8241b5a918441629bdc
+AssetOrigin:
+  serializedVersion: 1
+  productId: 326131
+  packageName: npc_casual_set_00
+  packageVersion: 1.0.3
+  assetPath: Assets/npc_casual_set_00/Mesh/npc_hmn_01m.fbx
+  uploadId: 807672
 ModelImporter:
-  serializedVersion: 22200
+  serializedVersion: 24200
   internalIDToNameTable: []
   externalObjects:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
       name: mtl_01
-    second: {fileID: 2100000, guid: 449c892dcfb7f3a43a50b2a52522498e, type: 2}
+    second: {fileID: 2100000, guid: c09710f9901bb064d8c42de1f000d5a9, type: 2}
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
       name: mtl_02
-    second: {fileID: 2100000, guid: 846a97d8aaab99b48880e1f033f3c564, type: 2}
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: mtl_npc_hmn_01m_01_01_body
-    second: {fileID: 2100000, guid: 449c892dcfb7f3a43a50b2a52522498e, type: 2}
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: mtl_npc_hmn_01m_01_01_face
-    second: {fileID: 2100000, guid: 846a97d8aaab99b48880e1f033f3c564, type: 2}
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: mtl_npc_hmn_01m_body
-    second: {fileID: 2100000, guid: 449c892dcfb7f3a43a50b2a52522498e, type: 2}
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: mtl_npc_hmn_01m_face
-    second: {fileID: 2100000, guid: 846a97d8aaab99b48880e1f033f3c564, type: 2}
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: mtl_npc_hmn_uv0_01m_01_01_body
-    second: {fileID: 2100000, guid: 449c892dcfb7f3a43a50b2a52522498e, type: 2}
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: mtl_npc_hmn_uv0_01m_01_01_face
-    second: {fileID: 2100000, guid: 846a97d8aaab99b48880e1f033f3c564, type: 2}
+    second: {fileID: 2100000, guid: 4c769f86d1628364a8dc03c5a942002a, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0
@@ -56,8 +33,6 @@ ModelImporter:
     optimizeGameObjects: 0
     removeConstantScaleCurves: 1
     motionNodeName: 
-    rigImportErrors: 
-    rigImportWarnings: 
     animationImportErrors: 
     animationImportWarnings: 
     animationRetargetingWarnings: 
@@ -98,6 +73,9 @@ ModelImporter:
     maxBonesPerVertex: 4
     minBoneWeight: 0.001
     optimizeBones: 1
+    generateMeshLods: 0
+    meshLodGenerationFlags: 0
+    maximumMeshLod: -1
     meshOptimizationFlags: -1
     indexFormat: 0
     secondaryUVAngleDistortion: 8
@@ -784,8 +762,7 @@ ModelImporter:
     - name: RightHandProp
       parentName: RightHand
       position: {x: 0.07249664, y: 0.02021976, z: -0.0038000562}
-      rotation: {x: 0.00000005960463, y: 0.000000048428763, z: -0.0000000032596283,
-        w: 1}
+      rotation: {x: 0.00000005960463, y: 0.000000048428763, z: -0.0000000032596283, w: 1}
       scale: {x: 0.99999994, y: 1.000001, z: 1.0000004}
     - name: RightHandRing1
       parentName: RightHand
@@ -881,10 +858,3 @@ ModelImporter:
   userData: 
   assetBundleName: 
   assetBundleVariant: 
-AssetOrigin:
-  serializedVersion: 1
-  productId: 326131
-  packageName: npc_casual_set_00
-  packageVersion: 1.0.3
-  assetPath: Assets/npc_casual_set_00/Mesh/npc_hmn_01m.fbx
-  uploadId: 807672
