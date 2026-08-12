@@ -4061,6 +4061,8 @@ MonoBehaviour:
   detailText: Content
   isQuestInteraction: 1
   questNumber: 2
+  npcAnimator: {fileID: 0}
+  waveTriggerName: wave
 --- !u!65 &164894746
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -6432,6 +6434,13 @@ MonoBehaviour:
   detailText: Content
   isQuestInteraction: 1
   questNumber: 4
+  npcAnimator: {fileID: 367922722}
+  waveTriggerName: wave
+--- !u!95 &367922722 stripped
+Animator:
+  m_CorrespondingSourceObject: {fileID: 88620781457071023, guid: 705225bb2a214a448b1dd2aefedb1af6, type: 3}
+  m_PrefabInstance: {fileID: 119551234}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &376938378
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -10913,6 +10922,8 @@ MonoBehaviour:
   detailText: Content
   isQuestInteraction: 1
   questNumber: 1
+  npcAnimator: {fileID: 0}
+  waveTriggerName: wave
 --- !u!136 &750757038
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -30458,6 +30469,8 @@ MonoBehaviour:
   detailText: 'Detail, Detail, Detail, Detail, Detail, Detail, Detail, Detail, Detail, '
   isQuestInteraction: 1
   questNumber: 5
+  npcAnimator: {fileID: 0}
+  waveTriggerName: wave
 --- !u!65 &1437887564
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -36307,6 +36320,8 @@ MonoBehaviour:
   detailText: Content
   isQuestInteraction: 1
   questNumber: 3
+  npcAnimator: {fileID: 0}
+  waveTriggerName: wave
 --- !u!1 &1762335731
 GameObject:
   m_ObjectHideFlags: 0
@@ -36602,7 +36617,7 @@ TerrainCollider:
   m_ProvidesContacts: 1
   m_Enabled: 1
   serializedVersion: 2
-  m_TerrainData: {fileID: 15600000, guid: b7ddc36e5445c8e42b396ca30def2d1a, type: 2}
+  m_TerrainData: {fileID: 15600000, guid: 6f16c71159cd61442a4a4fd1699b54b1, type: 2}
   m_EnableTreeColliders: 1
 --- !u!218 &1772519421
 Terrain:
@@ -36613,7 +36628,7 @@ Terrain:
   m_GameObject: {fileID: 1772519419}
   m_Enabled: 1
   serializedVersion: 6
-  m_TerrainData: {fileID: 15600000, guid: b7ddc36e5445c8e42b396ca30def2d1a, type: 2}
+  m_TerrainData: {fileID: 15600000, guid: 6f16c71159cd61442a4a4fd1699b54b1, type: 2}
   m_TreeDistance: 5000
   m_TreeBillboardDistance: 50
   m_TreeCrossFadeLength: 5
@@ -37771,6 +37786,10 @@ PrefabInstance:
     - target: {fileID: 453084650579209848, guid: 035bf1ba97d19214580cfe6f5a29fdc3, type: 3}
       propertyPath: MoveSpeed
       value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 453084650579209848, guid: 035bf1ba97d19214580cfe6f5a29fdc3, type: 3}
+      propertyPath: SprintSpeed
+      value: 15
       objectReference: {fileID: 0}
     - target: {fileID: 453084650579209855, guid: 035bf1ba97d19214580cfe6f5a29fdc3, type: 3}
       propertyPath: m_StaticEditorFlags

@@ -24,11 +24,24 @@ public class InteractableObject : MonoBehaviour
     [Tooltip("Which quest does this object complete?")]
     public int questNumber = 1;
 
+    [Header("Animation")]
+    [Tooltip("Assign the NPC's Animator here to trigger a wave on interact.")]
+    public Animator npcAnimator;
+
+    [Tooltip("Name of the Animator trigger parameter (must match exactly!).")]
+    public string waveTriggerName = "wave";
+
     /// <summary>
     /// Trigger interact logic
     /// </summary>
     public virtual void OnInteract(PlayerInteraction player)
     {
+        // Trigger wave animation if animator is assigned
+        if (npcAnimator != null)
+        {
+            npcAnimator.SetTrigger(waveTriggerName);
+        }
+        
         // Show detail panel
         player.ShowDetailPanel(detailText);
 
