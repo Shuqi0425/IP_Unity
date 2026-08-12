@@ -17,6 +17,9 @@ public class InteractableNPC : InteractableObject
         // Stop NPC movement
         GetComponent<NPCJaywalking>()?.StopForInteraction();
 
+        // Play interaction animation
+        GetComponent<NPCInteractFsm>()?.PlayInteractAnimation();
+
         // Complete quest if this is the current quest target
         if (isQuestInteraction &&
             QuestManager.Instance != null &&
