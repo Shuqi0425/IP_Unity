@@ -1,9 +1,8 @@
 // ==========================================
 // Title:       InteractableObject.cs
-// Description: Base class for all interactable objects in the game.
-//              Supports multi-line dialogue with branching choices.
+// Description: Base class for all interactable objects in the game. Supports multi-line dialogue with branching choices.
 // Author:      Sun Shuqi (10274096K)
-// Date:        31 / July (edited on 13 August)
+// Date:        13 August
 // ==========================================
 
 using UnityEngine;
@@ -15,7 +14,7 @@ public class InteractableObject : MonoBehaviour
     public string promptMessage = "Press E to Check";
 
     [Header("Detail info")]
-    [Tooltip("对话内容，支持纯文本和二选一/多选一分支")]
+    [Tooltip("Dialogue content, supports plain text and multiple-choice branching")]
     public DialogueLine[] dialogueLines = new DialogueLine[]
     {
         new DialogueLine { text = "Content", hasChoices = false }
@@ -28,7 +27,7 @@ public class InteractableObject : MonoBehaviour
     [Tooltip("Which quest does this object complete?")]
     public int questNumber = 1;
 
-    [Tooltip("是否在对话全部结束后才完成任务（取消勾选则一开始互动就完成）")]
+    [Tooltip("Whether to complete the quest only after the dialogue has finished (uncheck to complete immediately upon interaction).")]
     public bool completeQuestOnDialogueEnd = true;
 
     [Header("Animation")]
@@ -52,7 +51,7 @@ public class InteractableObject : MonoBehaviour
         // Show detail panel, passing the whole dialogue array + this object as source
         player.ShowDetailPanel(dialogueLines, this);
 
-        // 如果任务不需要等对话说完，就直接在开场时完成
+        // if this interaction is related to a quest and the quest should be completed immediately, try to complete it now
         if (isQuestInteraction && !completeQuestOnDialogueEnd)
         {
             TryCompleteQuest();
@@ -60,7 +59,7 @@ public class InteractableObject : MonoBehaviour
     }
 
     /// <summary>
-    /// 供PlayerInteraction在整段对话结束时调用
+    /// player calls this method when the dialogue finishes, to check if the quest should be completed
     /// </summary>
     public void OnDialogueFinished()
     {

@@ -1,3 +1,10 @@
+// ==========================================
+// Title:       QuestSceneController.cs
+// Description: control the quest scene, show the current quest target based on QuestManager's currentQuest
+// Author:      Sun Shuqi (10274096K)
+// Date:        13 August
+// ==========================================
+
 using UnityEngine;
 
 public class QuestSceneController : MonoBehaviour

@@ -1,10 +1,8 @@
 // ==========================================
 // Title:       PlayerInteraction.cs
-// Description: First-person Raycasting system for player interaction.
-//              Handles multi-line dialogue (press E to advance) and
-//              branching choices (click a button to pick).
+// Description: First-person Raycasting system for player interaction.Handles multi-line dialogue (press E to advance) and branching choices (click a button to pick).
 // Author:      Sun Shuqi (10274096K)
-// Date:        31 / July (edited on 10 August)
+// Date:        13 August
 // ==========================================
 
 using UnityEngine;
@@ -32,20 +30,20 @@ public class PlayerInteraction : MonoBehaviour
     [SerializeField] private TextMeshProUGUI infoPanelText;
 
     [Header("Dialogue Settings")]
-    [Tooltip("非最后一句时，附加在文字后面的提示，比如 '(按E继续)'，留空则不显示")]
+    [Tooltip("Additional prompt to show when the dialogue is not the last line, e.g., '(Press E to continue)'")]
     [SerializeField] private string continuePrompt = "";
 
-    [Tooltip("最后一句时，附加在文字后面的提示，比如 '(按E关闭)'，留空则不显示")]
+    [Tooltip("Additional prompt to show when the dialogue is the last line, e.g., '(Press E to close)'. Leave empty to not show.")]
     [SerializeField] private string endPrompt = "";
 
     [Header("Choice UI References")]
-    [Tooltip("选项面板，平时隐藏，出现二选一问题时显示")]
+    [Tooltip("Choice panel, hidden by default, shown when a multiple-choice question appears")]
     [SerializeField] private GameObject choicePanel;
 
-    [Tooltip("选项按钮，数量建议留够最大选项数（比如4个），用不到的会自动隐藏")]
+    [Tooltip("Choice buttons, it's recommended to have enough for the maximum number of choices (e.g., 4). Unused buttons will be automatically hidden.")]
     [SerializeField] private Button[] choiceButtons;
 
-    [Tooltip("每个按钮对应的文字组件，顺序要跟choiceButtons一一对应")]
+    [Tooltip("The text components corresponding to each button, in the same order as choiceButtons")]
     [SerializeField] private TextMeshProUGUI[] choiceButtonTexts;
 
     [Header("Debug")]
@@ -374,7 +372,7 @@ public class PlayerInteraction : MonoBehaviour
 
         HideChoices();
 
-        // 通知NPC对话结束了（用于任务完成判定等）
+        // notice the source that the dialogue has finished, so it can trigger quest completion if needed
         if (currentDialogueSource != null)
         {
             currentDialogueSource.OnDialogueFinished();

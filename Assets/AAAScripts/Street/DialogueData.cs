@@ -9,14 +9,14 @@ using UnityEngine;
 [System.Serializable]
 public class DialogueChoice
 {
-    [Tooltip("按钮上显示的文字，比如 '因为容易被车撞'")]
+    [Tooltip("show the text on the button, e.g., 'Because it's easy to get hit by a car'")]
     public string choiceText;
 
-    [Tooltip("选完这个选项后，NPC说的回应（可留空，留空则直接跳转不显示回应）")]
+    [Tooltip("The NPC's response after this choice is selected (can be left empty, if empty it will directly jump without showing a response)")]
     [TextArea(2, 4)]
     public string responseText;
 
-    [Tooltip("选完之后跳到第几句(从0开始)。填-1代表按顺序往下一句走")]
+    [Tooltip("After selecting this choice, jump to which line (starting from 0). Fill -1 to proceed to the next line in order.")]
     public int nextLineIndex = -1;
 }
 
@@ -26,9 +26,9 @@ public class DialogueLine
     [TextArea(2, 4)]
     public string text;
 
-    [Tooltip("这句是否是二选一/多选一的问题")]
+    [Tooltip("Whether this line is a multiple-choice question")]
     public bool hasChoices = false;
 
-    [Tooltip("选项列表，hasChoices为true时才会用到")]
+    [Tooltip("List of choices, used only if hasChoices is true")]
     public DialogueChoice[] choices;
 }
