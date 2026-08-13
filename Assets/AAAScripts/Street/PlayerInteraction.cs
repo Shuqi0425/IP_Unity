@@ -1,23 +1,25 @@
 // ==========================================
 // Title:       PlayerInteraction.cs
-// Description: First-person Raycasting system for player interaction with UI feedback.
+// Description: First-person Raycasting system for player interaction.
+//              Handles multi-line dialogue (press E to advance) and
+//              branching choices (click a button to pick).
 // Author:      Sun Shuqi (10274096K)
-// Date:        31 / July
+// Date:        31 / July (edited on 10 August)
 // ==========================================
 
-using UnityEngine; 
-using UnityEngine.InputSystem; 
-using TMPro; 
+using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.UI;
+using TMPro;
 
 public class PlayerInteraction : MonoBehaviour
 {
-
     [Header("Raycast Settings")]
     [Tooltip("maximum interaction distance")]
-    [SerializeField] private float interactDistance = 3.0f; // Sets max interaction ray distance.
+    [SerializeField] private float interactDistance = 3.0f;
 
     [Tooltip("Layer of interactable objects")]
-    [SerializeField] private LayerMask interactableLayer; // Selects which layers the ray can hit.
+    [SerializeField] private LayerMask interactableLayer;
 
     [Header("UI References (Canvas)")]
     [Tooltip("Press E to Interact Text")]
@@ -29,14 +31,39 @@ public class PlayerInteraction : MonoBehaviour
     [Tooltip("InfoPanel")]
     [SerializeField] private TextMeshProUGUI infoPanelText;
 
+    [Header("Dialogue Settings")]
+    [Tooltip("非最后一句时，附加在文字后面的提示，比如 '(按E继续)'，留空则不显示")]
+    [SerializeField] private string continuePrompt = "";
+
+    [Tooltip("最后一句时，附加在文字后面的提示，比如 '(按E关闭)'，留空则不显示")]
+    [SerializeField] private string endPrompt = "";
+
+    [Header("Choice UI References")]
+    [Tooltip("选项面板，平时隐藏，出现二选一问题时显示")]
+    [SerializeField] private GameObject choicePanel;
+
+    [Tooltip("选项按钮，数量建议留够最大选项数（比如4个），用不到的会自动隐藏")]
+    [SerializeField] private Button[] choiceButtons;
+
+    [Tooltip("每个按钮对应的文字组件，顺序要跟choiceButtons一一对应")]
+    [SerializeField] private TextMeshProUGUI[] choiceButtonTexts;
+
     [Header("Debug")]
     [Tooltip("draw debug rays in the Scene view")]
     [SerializeField] private bool showDebugRay = true;
 
-    Camera playerCamera; // Caches the camera used for aiming.
+    Camera playerCamera;
+    InteractableObject currentTarget;
+    private GameObject lastInteractedNPC;
 
-    InteractableObject currentTarget; // Tracks the interactable currently aimed at
-    private GameObject lastInteractedNPC; // record which NPC triggered conversation
+    // ---- 对话进度状态 ----
+    private DialogueLine[] currentDialogueLines;
+    private int currentLineIndex;
+    private InteractableObject currentDialogueSource;
+
+    // ---- 选项回应过渡状态（选完选项 -> 先看回应 -> 按E才真正跳转）----
+    private bool waitingForResponseContinue = false;
+    private int pendingJumpIndex = -1;
 
     void Awake()
     {
@@ -49,72 +76,86 @@ public class PlayerInteraction : MonoBehaviour
 
         if (promptText != null) promptText.gameObject.SetActive(false);
         if (infoPanel != null) infoPanel.SetActive(false);
+        if (choicePanel != null) choicePanel.SetActive(false);
     }
 
     void Update()
     {
-        // if panel is open, only listen for close input, skip raycast this frame
+        // 对话面板打开时
         if (infoPanel != null && infoPanel.activeSelf)
         {
-            if (Keyboard.current.eKey.wasPressedThisFrame || Keyboard.current.escapeKey.wasPressedThisFrame)
+            bool showingChoices = choicePanel != null && choicePanel.activeSelf;
+
+            // 显示选项时，E/Esc都不处理，只等玩家点按钮
+            if (showingChoices)
+            {
+                return;
+            }
+
+            if (Keyboard.current.eKey.wasPressedThisFrame)
+            {
+                AdvanceDialogue();
+            }
+            else if (Keyboard.current.escapeKey.wasPressedThisFrame)
             {
                 CloseDetailPanel();
             }
             return;
         }
 
-        UpdateInteractionTarget(); // Refreshes the currently aimed interactable.
+        // 平时的射线检测逻辑
+        UpdateInteractionTarget();
 
-        if (currentTarget != null && Keyboard.current.eKey.wasPressedThisFrame) // Checks interact input.
+        if (currentTarget != null && Keyboard.current.eKey.wasPressedThisFrame)
         {
-            OnInteract(); // Runs when the interact input is triggered.
+            OnInteract();
         }
     }
 
-    void UpdateInteractionTarget() // Performs the raycast target check.
+    void UpdateInteractionTarget()
     {
-        if (playerCamera == null) // Checks whether camera cache is missing.
-        { 
-            playerCamera = Camera.main; // Tries to re-fetch the main camera.
-            if (playerCamera == null) // Checks if camera is still unavailable.
-            { 
-                ClearCurrentTargets(); // Clears all tracked targets.
+        if (playerCamera == null)
+        {
+            playerCamera = Camera.main;
+            if (playerCamera == null)
+            {
+                ClearCurrentTargets();
                 return;
             }
         }
 
-        Ray ray = new Ray(playerCamera.transform.position, playerCamera.transform.forward); // Builds a forward ray from the camera.
-        Vector3 rayEndPoint = ray.origin + (ray.direction * interactDistance); // Computes the max-distance end point of the ray.
+        Ray ray = new Ray(playerCamera.transform.position, playerCamera.transform.forward);
+        Vector3 rayEndPoint = ray.origin + (ray.direction * interactDistance);
 
         if (showDebugRay)
         {
             Debug.DrawRay(ray.origin, ray.direction * interactDistance, Color.red);
         }
 
-        if (Physics.Raycast(ray, out RaycastHit hit, interactDistance, interactableLayer)) // Casts the ray against valid colliders.
-        { 
-            Debug.DrawLine(ray.origin, hit.point, Color.green); // Draws the hit ray in green.
-            SetCurrentTargetsFromHit(hit.collider); // Updates targets from the hit collider.
-        }
-        else // Handles the case where nothing was hit.
+        if (Physics.Raycast(ray, out RaycastHit hit, interactDistance, interactableLayer))
         {
-            Debug.DrawLine(ray.origin, rayEndPoint, Color.red); // Draws the full ray in red when no hit occurs.
+            Debug.DrawLine(ray.origin, hit.point, Color.green);
+            SetCurrentTargetsFromHit(hit.collider);
+        }
+        else
+        {
+            Debug.DrawLine(ray.origin, rayEndPoint, Color.red);
             ClearCurrentTargets();
-        } 
+        }
     }
 
-    void SetCurrentTargetsFromHit(Collider hitCollider) // Derives interactable reference from a hit.
+    void SetCurrentTargetsFromHit(Collider hitCollider)
     {
-        InteractableObject newTarget = null; // Prepares a fresh interactable target.
+        InteractableObject newTarget = null;
 
-        if (hitCollider.CompareTag("Interactable")) // Checks if the hit object is tagged as Interactable.
+        if (hitCollider.CompareTag("Interactable"))
         {
-            newTarget = hitCollider.GetComponentInParent<InteractableObject>(); // Gets InteractableObject script from hit hierarchy.
+            newTarget = hitCollider.GetComponentInParent<InteractableObject>();
         }
 
-        if (newTarget != currentTarget) // Only refresh UI when the target actually changed.
+        if (newTarget != currentTarget)
         {
-            currentTarget = newTarget; // Commits the interactable target.
+            currentTarget = newTarget;
 
             if (currentTarget != null && promptText != null)
             {
@@ -128,9 +169,9 @@ public class PlayerInteraction : MonoBehaviour
         }
     }
 
-    void ClearCurrentTargets() // Resets currently tracked interaction target.
+    void ClearCurrentTargets()
     {
-        currentTarget = null; // Clears interactable target.
+        currentTarget = null;
 
         if (promptText != null)
         {
@@ -138,35 +179,191 @@ public class PlayerInteraction : MonoBehaviour
         }
     }
 
-    void OnInteract() // Runs when the interact input is triggered.
+    void OnInteract()
     {
-        if (currentTarget != null) // Checks for an interactable target.
+        if (currentTarget != null)
         {
-            currentTarget.OnInteract(this); // Calls the target's own interact logic (shows detail panel).
+            currentTarget.OnInteract(this);
         }
     }
 
     /// <summary>
-    /// open the detail info panel
+    /// 打开对话面板，从第0句开始播放
     /// </summary>
-    public void ShowDetailPanel(string content, GameObject sourceNPC = null)
+    public void ShowDetailPanel(DialogueLine[] dialogueLines, InteractableObject source = null)
     {
-        ClearCurrentTargets(); // hide hit-on announcement
-        lastInteractedNPC = sourceNPC;
+        ClearCurrentTargets();
+        lastInteractedNPC = source != null ? source.gameObject : null;
+        currentDialogueSource = source;
 
-        if (infoPanelText != null)
-        {
-            infoPanelText.text = content;
-        }
+        currentDialogueLines = (dialogueLines != null && dialogueLines.Length > 0)
+            ? dialogueLines
+            : new DialogueLine[] { new DialogueLine { text = "..." } };
+
+        currentLineIndex = 0;
+        waitingForResponseContinue = false;
+        pendingJumpIndex = -1;
 
         if (infoPanel != null)
         {
             infoPanel.SetActive(true);
         }
+
+        DisplayCurrentLine();
+    }
+
+    private void DisplayCurrentLine()
+    {
+        if (currentDialogueLines == null ||
+            currentLineIndex < 0 ||
+            currentLineIndex >= currentDialogueLines.Length)
+        {
+            return;
+        }
+
+        DialogueLine line = currentDialogueLines[currentLineIndex];
+
+        if (line.hasChoices && line.choices != null && line.choices.Length > 0)
+        {
+            // 这是一个选项句：只显示问题文字，不加continue/end提示（因为要等玩家点按钮）
+            if (infoPanelText != null)
+            {
+                infoPanelText.text = line.text;
+            }
+            ShowChoices(line.choices);
+        }
+        else
+        {
+            // 普通句：显示文字 + continue/end提示
+            HideChoices();
+
+            bool isLastLine = currentLineIndex >= currentDialogueLines.Length - 1;
+            string suffix = isLastLine ? endPrompt : continuePrompt;
+
+            if (infoPanelText != null)
+            {
+                infoPanelText.text = string.IsNullOrEmpty(suffix) ? line.text : $"{line.text}\n{suffix}";
+            }
+        }
+    }
+
+    private void ShowChoices(DialogueChoice[] choices)
+    {
+        if (choicePanel == null || choiceButtons == null) return;
+
+        choicePanel.SetActive(true);
+
+        for (int i = 0; i < choiceButtons.Length; i++)
+        {
+            if (choiceButtons[i] == null) continue;
+
+            if (i < choices.Length)
+            {
+                int choiceIndex = i; // 闭包坑，必须存一份局部变量
+                choiceButtons[i].gameObject.SetActive(true);
+
+                if (choiceButtonTexts != null && i < choiceButtonTexts.Length && choiceButtonTexts[i] != null)
+                {
+                    choiceButtonTexts[i].text = choices[i].choiceText;
+                }
+
+                choiceButtons[i].onClick.RemoveAllListeners();
+                choiceButtons[i].onClick.AddListener(() => OnChoiceSelected(choiceIndex));
+            }
+            else
+            {
+                choiceButtons[i].gameObject.SetActive(false);
+            }
+        }
+    }
+
+    private void HideChoices()
+    {
+        if (choicePanel != null)
+        {
+            choicePanel.SetActive(false);
+        }
     }
 
     /// <summary>
-    /// close info panel
+    /// 玩家点击了某个选项按钮时调用（绑定在按钮的onClick上，通过匿名方法传入下标）
+    /// </summary>
+    private void OnChoiceSelected(int choiceIndex)
+    {
+        DialogueLine currentLine = currentDialogueLines[currentLineIndex];
+
+        if (currentLine.choices == null || choiceIndex < 0 || choiceIndex >= currentLine.choices.Length)
+        {
+            return;
+        }
+
+        DialogueChoice choice = currentLine.choices[choiceIndex];
+        int targetIndex = (choice.nextLineIndex >= 0) ? choice.nextLineIndex : currentLineIndex + 1;
+
+        HideChoices();
+
+        // 如果这个选项有回应文字，先显示回应，等玩家按E再跳转
+        if (!string.IsNullOrEmpty(choice.responseText))
+        {
+            if (infoPanelText != null)
+            {
+                infoPanelText.text = string.IsNullOrEmpty(continuePrompt)
+                    ? choice.responseText
+                    : $"{choice.responseText}\n{continuePrompt}";
+            }
+
+            pendingJumpIndex = targetIndex;
+            waitingForResponseContinue = true;
+        }
+        else
+        {
+            // 没有回应文字，直接跳转
+            JumpToLine(targetIndex);
+        }
+    }
+
+    private void JumpToLine(int index)
+    {
+        if (currentDialogueLines == null || index < 0 || index >= currentDialogueLines.Length)
+        {
+            CloseDetailPanel();
+            return;
+        }
+
+        currentLineIndex = index;
+        DisplayCurrentLine();
+    }
+
+    /// <summary>
+    /// 按E推进对话：
+    /// - 如果刚看完选项回应，这次E会真正跳转到目标句
+    /// - 否则正常往下一句走，走到最后一句之后关闭面板
+    /// </summary>
+    private void AdvanceDialogue()
+    {
+        if (waitingForResponseContinue)
+        {
+            waitingForResponseContinue = false;
+            int target = pendingJumpIndex;
+            pendingJumpIndex = -1;
+            JumpToLine(target);
+            return;
+        }
+
+        currentLineIndex++;
+
+        if (currentDialogueLines == null || currentLineIndex >= currentDialogueLines.Length)
+        {
+            CloseDetailPanel();
+        }
+        else
+        {
+            DisplayCurrentLine();
+        }
+    }
+
+    /// <summary>
+    /// 关闭对话面板（对话正常说完 / 按Esc强制跳过 都会走这里）
     /// </summary>
     public void CloseDetailPanel()
     {
@@ -175,10 +372,24 @@ public class PlayerInteraction : MonoBehaviour
             infoPanel.SetActive(false);
         }
 
+        HideChoices();
+
+        // 通知NPC对话结束了（用于任务完成判定等）
+        if (currentDialogueSource != null)
+        {
+            currentDialogueSource.OnDialogueFinished();
+        }
+
         if (lastInteractedNPC != null)
         {
             lastInteractedNPC.GetComponent<NPCJaywalking>()?.LeaveAfterDialogue();
             lastInteractedNPC = null;
         }
+
+        currentDialogueLines = null;
+        currentDialogueSource = null;
+        currentLineIndex = 0;
+        waitingForResponseContinue = false;
+        pendingJumpIndex = -1;
     }
-} 
+}
