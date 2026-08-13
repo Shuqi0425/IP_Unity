@@ -1,14 +1,17 @@
 // ==========================================
 // Title:       PlayerInteraction.cs
-// Description: First-person Raycasting system for player interaction.Handles multi-line dialogue (press E to advance) and branching choices (click a button to pick).
+// Description: First-person Raycasting system for player interaction.
+//              Handles multi-line dialogue (press E to advance) and
+//              branching choices (click a button to pick).
 // Author:      Sun Shuqi (10274096K)
-// Date:        13 August
+// Date:        31 / July (edited on 13 August)
 // ==========================================
 
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using TMPro;
+using StarterAssets;
 
 public class PlayerInteraction : MonoBehaviour
 {
@@ -40,11 +43,19 @@ public class PlayerInteraction : MonoBehaviour
     [Tooltip("Choice panel, hidden by default, shown when a multiple-choice question appears")]
     [SerializeField] private GameObject choicePanel;
 
-    [Tooltip("Choice buttons, it's recommended to have enough for the maximum number of choices (e.g., 4). Unused buttons will be automatically hidden.")]
+    [Tooltip("option buttons, it is recommended to leave enough for the maximum number of options (e.g., 4), unused ones will be automatically hidden")]
     [SerializeField] private Button[] choiceButtons;
 
     [Tooltip("The text components corresponding to each button, in the same order as choiceButtons")]
     [SerializeField] private TextMeshProUGUI[] choiceButtonTexts;
+
+    [Header("Cursor Settings")]
+    [Tooltip("Whether to automatically unlock and show the mouse when the dialogue/choice panel is open (usually needed for first-person view, otherwise the buttons cannot be clicked)")]
+    [SerializeField] private bool unlockCursorDuringDialogue = true;
+
+    [Tooltip("Drag the Starter Assets Inputs component attached to the Player here. If left empty, it will automatically try to find it in the parent object. " +
+             "Purpose: Pause mouse look when the dialogue panel is open, and resume it when closed, to prevent the camera from moving while clicking buttons.")]
+    [SerializeField] private StarterAssetsInputs starterAssetsInput;
 
     [Header("Debug")]
     [Tooltip("draw debug rays in the Scene view")]
@@ -54,14 +65,27 @@ public class PlayerInteraction : MonoBehaviour
     InteractableObject currentTarget;
     private GameObject lastInteractedNPC;
 
-    // ---- 对话进度状态 ----
+    // ---- dialogue ----
     private DialogueLine[] currentDialogueLines;
     private int currentLineIndex;
     private InteractableObject currentDialogueSource;
 
-    // ---- 选项回应过渡状态（选完选项 -> 先看回应 -> 按E才真正跳转）----
+    // ---- choice response transition state (after selecting an option -> view response -> press E to actually jump) ----
     private bool waitingForResponseContinue = false;
     private int pendingJumpIndex = -1;
+
+    // ---- mouse state before opening the panel, to restore when closing the panel ----
+    private CursorLockMode previousLockState;
+    private bool previousCursorVisible;
+
+    // ---- whether the cursor is currently frozen due to the choice panel being open ----
+    private bool isCursorFrozenForChoices = false;
+
+    /// <summary>
+    /// Triggered when the dialogue panel is closed (either normally or by pressing Esc to skip).
+    /// For external scripts to subscribe, for example, to return control to the player after the scene opening briefing is finished.
+    /// </summary>
+    public System.Action OnDialogueClosed;
 
     void Awake()
     {
@@ -75,16 +99,22 @@ public class PlayerInteraction : MonoBehaviour
         if (promptText != null) promptText.gameObject.SetActive(false);
         if (infoPanel != null) infoPanel.SetActive(false);
         if (choicePanel != null) choicePanel.SetActive(false);
+
+        // if` the StarterAssetsInput is not assigned in the Inspector, try to find it in the parent object 
+        if (starterAssetsInput == null)
+        {
+            starterAssetsInput = GetComponentInParent<StarterAssetsInputs>();
+        }
     }
 
     void Update()
     {
-        // 对话面板打开时
+        // when the info panel is open, we don't do raycasting, only handle E/Esc for dialogue advancement or closing
         if (infoPanel != null && infoPanel.activeSelf)
         {
             bool showingChoices = choicePanel != null && choicePanel.activeSelf;
 
-            // 显示选项时，E/Esc都不处理，只等玩家点按钮
+            // shwoing choices: don't allow E to advance dialogue, only allow Esc to close the panel
             if (showingChoices)
             {
                 return;
@@ -101,7 +131,7 @@ public class PlayerInteraction : MonoBehaviour
             return;
         }
 
-        // 平时的射线检测逻辑
+        // regular raycasting for interaction
         UpdateInteractionTarget();
 
         if (currentTarget != null && Keyboard.current.eKey.wasPressedThisFrame)
@@ -125,19 +155,26 @@ public class PlayerInteraction : MonoBehaviour
         Ray ray = new Ray(playerCamera.transform.position, playerCamera.transform.forward);
         Vector3 rayEndPoint = ray.origin + (ray.direction * interactDistance);
 
+        bool didHit = Physics.Raycast(ray, out RaycastHit hit, interactDistance, interactableLayer);
+
         if (showDebugRay)
         {
-            Debug.DrawRay(ray.origin, ray.direction * interactDistance, Color.red);
+            if (didHit)
+            {
+                Debug.DrawLine(ray.origin, hit.point, Color.green);
+            }
+            else
+            {
+                Debug.DrawLine(ray.origin, rayEndPoint, Color.red);
+            }
         }
 
-        if (Physics.Raycast(ray, out RaycastHit hit, interactDistance, interactableLayer))
+        if (didHit)
         {
-            Debug.DrawLine(ray.origin, hit.point, Color.green);
             SetCurrentTargetsFromHit(hit.collider);
         }
         else
         {
-            Debug.DrawLine(ray.origin, rayEndPoint, Color.red);
             ClearCurrentTargets();
         }
     }
@@ -186,7 +223,7 @@ public class PlayerInteraction : MonoBehaviour
     }
 
     /// <summary>
-    /// 打开对话面板，从第0句开始播放
+    /// open teh dialogue panel and display the given dialogue lines, starting from the first line.
     /// </summary>
     public void ShowDetailPanel(DialogueLine[] dialogueLines, InteractableObject source = null)
     {
@@ -223,7 +260,7 @@ public class PlayerInteraction : MonoBehaviour
 
         if (line.hasChoices && line.choices != null && line.choices.Length > 0)
         {
-            // 这是一个选项句：只显示问题文字，不加continue/end提示（因为要等玩家点按钮）
+            //  a choice line: show text + options
             if (infoPanelText != null)
             {
                 infoPanelText.text = line.text;
@@ -232,7 +269,7 @@ public class PlayerInteraction : MonoBehaviour
         }
         else
         {
-            // 普通句：显示文字 + continue/end提示
+            // simple   text line: show text, hide options
             HideChoices();
 
             bool isLastLine = currentLineIndex >= currentDialogueLines.Length - 1;
@@ -251,13 +288,16 @@ public class PlayerInteraction : MonoBehaviour
 
         choicePanel.SetActive(true);
 
+        // ---- only unlock the mouse and freeze the camera when the choice panel is shown ----
+        SetCursorFrozenForChoices(true);
+
         for (int i = 0; i < choiceButtons.Length; i++)
         {
             if (choiceButtons[i] == null) continue;
 
             if (i < choices.Length)
             {
-                int choiceIndex = i; // 闭包坑，必须存一份局部变量
+                int choiceIndex = i; 
                 choiceButtons[i].gameObject.SetActive(true);
 
                 if (choiceButtonTexts != null && i < choiceButtonTexts.Length && choiceButtonTexts[i] != null)
@@ -281,10 +321,13 @@ public class PlayerInteraction : MonoBehaviour
         {
             choicePanel.SetActive(false);
         }
+
+        // ---- only unlock the mouse and unfreeze the camera when the choice panel is hidden ----
+        SetCursorFrozenForChoices(false);
     }
 
     /// <summary>
-    /// 玩家点击了某个选项按钮时调用（绑定在按钮的onClick上，通过匿名方法传入下标）
+    /// Called when the player clicks a choice button (bound to the button's onClick, passing the index through a lambda)
     /// </summary>
     private void OnChoiceSelected(int choiceIndex)
     {
@@ -300,7 +343,7 @@ public class PlayerInteraction : MonoBehaviour
 
         HideChoices();
 
-        // 如果这个选项有回应文字，先显示回应，等玩家按E再跳转
+        // if the choice has a response text, show it and wait for the player to press E to continue; otherwise, jump directly to the target line
         if (!string.IsNullOrEmpty(choice.responseText))
         {
             if (infoPanelText != null)
@@ -315,7 +358,7 @@ public class PlayerInteraction : MonoBehaviour
         }
         else
         {
-            // 没有回应文字，直接跳转
+            // if there's no response text, jump directly to the target line
             JumpToLine(targetIndex);
         }
     }
@@ -333,9 +376,7 @@ public class PlayerInteraction : MonoBehaviour
     }
 
     /// <summary>
-    /// 按E推进对话：
-    /// - 如果刚看完选项回应，这次E会真正跳转到目标句
-    /// - 否则正常往下一句走，走到最后一句之后关闭面板
+    /// pressed E to advance the dialogue, either to the next line or to the target line after a choice response
     /// </summary>
     private void AdvanceDialogue()
     {
@@ -361,7 +402,7 @@ public class PlayerInteraction : MonoBehaviour
     }
 
     /// <summary>
-    /// 关闭对话面板（对话正常说完 / 按Esc强制跳过 都会走这里）
+    /// close the dialogue panel, hide choices, and reset state. This can be called either when the dialogue naturally ends or when the player presses Esc to skip.
     /// </summary>
     public void CloseDetailPanel()
     {
@@ -372,7 +413,7 @@ public class PlayerInteraction : MonoBehaviour
 
         HideChoices();
 
-        // notice the source that the dialogue has finished, so it can trigger quest completion if needed
+        // inform the dialogue source that the dialogue has finished, so it can perform any necessary cleanup or state changes
         if (currentDialogueSource != null)
         {
             currentDialogueSource.OnDialogueFinished();
@@ -389,5 +430,51 @@ public class PlayerInteraction : MonoBehaviour
         currentLineIndex = 0;
         waitingForResponseContinue = false;
         pendingJumpIndex = -1;
+
+        OnDialogueClosed?.Invoke();
+    }
+
+    /// <summary>
+    /// called when the choice panel is shown/hidden. During this time, the mouse is unlocked and the camera is frozen.
+    /// Normal dialogue progression (without choices) is not affected, and the camera can move freely.
+    /// If you don't want this behavior, uncheck unlockCursorDuringDialogue in the Inspector.
+    /// </summary>
+    private void SetCursorFrozenForChoices(bool freeze)
+    {
+        if (!unlockCursorDuringDialogue) return;
+
+        if (freeze)
+        {
+            if (isCursorFrozenForChoices) return; // freeze only once, don't repeat
+
+            // remember the previous cursor state so we can restore it later
+            previousLockState = Cursor.lockState;
+            previousCursorVisible = Cursor.visible;
+
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+
+            if (starterAssetsInput != null)
+            {
+                starterAssetsInput.cursorInputForLook = false;
+                starterAssetsInput.look = Vector2.zero; // clear any existing look input to prevent camera from moving when unlocking cursor
+            }
+
+            isCursorFrozenForChoices = true;
+        }
+        else
+        {
+            if (!isCursorFrozenForChoices) return;
+
+            Cursor.lockState = previousLockState;
+            Cursor.visible = previousCursorVisible;
+
+            if (starterAssetsInput != null)
+            {
+                starterAssetsInput.cursorInputForLook = true;
+            }
+
+            isCursorFrozenForChoices = false;
+        }
     }
 }
