@@ -21,6 +21,14 @@ public class QuestSceneController : MonoBehaviour
             return;
         }
 
+        RefreshQuestTargets();
+    }
+
+    /// <summary>
+    /// Call this after a quest is completed to update which target is visible.
+    /// </summary>
+    public void RefreshQuestTargets()
+    {
         // Hide all quest targets
         foreach (GameObject target in questTargets)
         {
@@ -30,18 +38,13 @@ public class QuestSceneController : MonoBehaviour
             }
         }
 
-        // Current Quest 1 = Array index 0
-        // Current Quest 2 = Array index 1
+        // Current Quest 1 = Array index 0, Quest 4 = index 3
         int index = QuestManager.Instance.currentQuest - 1;
 
         if (index >= 0 && index < questTargets.Length)
         {
             questTargets[index].SetActive(true);
-
-            Debug.Log(
-                "Current Quest: " +
-                QuestManager.Instance.currentQuest
-            );
+            Debug.Log("Current Quest: " + QuestManager.Instance.currentQuest);
         }
     }
 }
