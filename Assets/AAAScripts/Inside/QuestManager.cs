@@ -29,10 +29,14 @@ public class QuestManager : MonoBehaviour
         }
     }
 
+    // Event fired when ANY quest is completed. Passes the quest number that was just finished.
+    public static event System.Action<int> OnQuestCompleted;
+
     public void CompleteQuest()
     {
         if (currentQuest < 5)
         {
+            int completedQuest = currentQuest;
             currentQuest++;
             Debug.Log("Quest completed! Next Quest: " + currentQuest);
         }
