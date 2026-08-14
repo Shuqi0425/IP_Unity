@@ -16,6 +16,9 @@ public class QuestManager : MonoBehaviour
     [Tooltip("Indicates if all five quests are completed")]
     public bool allQuestsCompleted = false;
 
+    // Event fired when ANY quest is completed. Passes the quest number that was just finished.
+    public static event System.Action<int> OnQuestCompleted;
+
     private void Awake()
     {
         if (Instance == null)
@@ -29,9 +32,6 @@ public class QuestManager : MonoBehaviour
         }
     }
 
-    // Event fired when ANY quest is completed. Passes the quest number that was just finished.
-    public static event System.Action<int> OnQuestCompleted;
-
     public void CompleteQuest()
     {
         if (currentQuest < 5)
@@ -39,11 +39,17 @@ public class QuestManager : MonoBehaviour
             int completedQuest = currentQuest;
             currentQuest++;
             Debug.Log("Quest completed! Next Quest: " + currentQuest);
+
+            // inform other scripts that a quest has been completed
+            OnQuestCompleted?.Invoke(completedQuest);
         }
         else
         {
             allQuestsCompleted = true;
             Debug.Log("All 5 quests completed!");
+
+            // finish the last quest and inform other scripts
+            OnQuestCompleted?.Invoke(5);
         }
     }
 }

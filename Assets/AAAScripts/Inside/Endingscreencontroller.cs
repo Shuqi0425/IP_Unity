@@ -97,23 +97,23 @@ public class EndingScreenController : MonoBehaviour
 
         if (endingText != null)
         {
-            string suffix = allowCloseWithE ? "\n\n(按 E 继续)" : "";
+            string suffix = allowCloseWithE ? "\n\npress E to continue" : "";
             endingText.text = endingContent + suffix;
         }
 
-        // 暂时禁用NPC互动，避免E键冲突
+        // temporarily disable NPC interaction to avoid E key conflicts
         if (playerInteraction != null)
         {
             playerInteraction.enabled = false;
         }
 
-        // 冻结玩家移动/视角
+        // temporarily freeze player movement/view
         if (freezePlayerDuringEnding && starterAssetsInput != null)
         {
             starterAssetsInput.enabled = false;
         }
 
-        // 解锁鼠标，方便万一Panel上有按钮（比如"重新开始"、"退出游戏"）可以点
+        // unlock the cursor to allow interaction with UI buttons (e.g., "Restart", "Quit")
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
     }
@@ -124,10 +124,10 @@ public class EndingScreenController : MonoBehaviour
 
         if (endingPanel != null) endingPanel.SetActive(false);
 
-        // ---- 新增：播放结束特效 ----
+        // ---- newly added: play ending particles ----
         if (endingParticles != null)
         {
-            endingParticles.gameObject.SetActive(true); // 以防物体本身默认是隐藏的
+            endingParticles.gameObject.SetActive(true); // in case the object is initially hidden
             endingParticles.Play();
         }
 
